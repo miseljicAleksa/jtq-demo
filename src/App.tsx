@@ -1,84 +1,140 @@
-import "./style.css";
-import { useEffect, useState } from "react";
-import FilterDramaIcon from "@mui/icons-material/FilterDrama";
-import DehazeIcon from "@mui/icons-material/Dehaze";
-import VapingRoomsIcon from "@mui/icons-material/VapingRooms";
-import WbSunnyIcon from "@mui/icons-material/WbSunny";
+import React, { useEffect, useState } from "react";
+
 import WeatherApiResponse from "./constants/models";
 import SearchBar from "./components/SearchBar/SearchBar";
 import Clock from "./components/Clock/Clock";
 import StatItem from "./components/StatItem/StatItem";
+import "./style.css";
+import WeatherIcon from "./components/WeatherIcon/WeatherIcon";
+import { WEATHER_API_KEY } from "./config";
+import ErrorMessage from "./components/ErrorMessage/ErrorMessage";
+import Spinner from "./components/Spinner/Spinner";
+import { debounce } from "./helpers/utils";
 
-let WEATHER_API_KEY = "41576edb6bf36def6a7ba25cfe60bf3f";
-
-export default function App() {
+const App: React.FC = () => {
   const [place, setPlace] = useState("Belgrade");
-  const [placeData, setPlaceData] = useState<WeatherApiResponse | null>(null);
-  const currentTime = new Date().toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const [weatherData, setWeatherData] = useState<WeatherApiResponse | null>(
+    null
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<string>(
+    new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Belgrade",
+    })
+  );
+  const [cityTime, setCityTime] = useState<string>(
+    new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  );
+
+  const updateCityTime = (timezone: number) => {
+    const cityTime = new Date(
+      new Date().getTime() + timezone * 1000 - 3600 * 1000
+    ).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    setCityTime(cityTime);
+    setCurrentTime(cityTime);
+  };
+
+  const debouncedSearch = debounce((place: string) => {
+    setPlace(place);
+  }, 500);
+
   const getWeatherData = async () => {
+    setLoading(true);
+    setError(null);
+
     if (place && place.length > 0) {
       try {
         let url = `https://api.openweathermap.org/data/2.5/weather?q=${place}&appid=${WEATHER_API_KEY}`;
         let res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(
+            `Weather data request failed with status: ${res.status}`
+          );
+        }
+
         let data = await res.json();
-        setPlaceData(data);
+
+        if (!data || !data.main || !data.weather) {
+          throw new Error(
+            "Weather data is incomplete or missing required properties."
+          );
+        }
+        setError("");
+
+        setWeatherData(data);
+        if (data.timezone) {
+          updateCityTime(data.timezone);
+        }
       } catch (err) {
-        console.log(err);
+        setError("Failed to fetch weather data. Please try again later.");
+      } finally {
+        setLoading(false);
       }
     }
   };
 
   useEffect(() => {
     getWeatherData();
-  }, []);
+  }, [place]);
 
   return (
     <div className="weather-container">
-      <SearchBar onSearchChange={setPlace} getWeatherData={getWeatherData} />
+      <SearchBar
+        onSearchChange={(value) => debouncedSearch.call(null, value)}
+        getWeatherData={getWeatherData}
+      />
 
-      {placeData && (
+      {loading && <Spinner />}
+
+      {error && <ErrorMessage message={error} />}
+
+      {weatherData && (
         <div className="weather-info">
           <div className="current-weather">
             <div className="weather-icon-container">
-              {placeData.weather[0].main === "Clouds" && (
-                <FilterDramaIcon className="weather-icon" />
-              )}
-              {placeData.weather[0].main === "Haze" && (
-                <DehazeIcon className="weather-icon" />
-              )}
-              {placeData.weather[0].main === "Smoke" && (
-                <VapingRoomsIcon className="weather-icon" />
-              )}
-              {placeData.weather[0].main === "Clear" && (
-                <WbSunnyIcon className="weather-icon" />
-              )}
+              <WeatherIcon main={weatherData.weather[0].main} />
 
               <p className="temperature">
-                {(placeData?.main.temp - 273.15).toFixed(1)} <span>°C</span>
+                {(weatherData?.main.temp - 273.15).toFixed(1)} <span>°C</span>
               </p>
             </div>
             <div className="weather-details">
-              <p className="city-name">{placeData?.name}</p>
-              <p className="weather-type">{placeData?.weather[0].main}</p>
+              <p className="city-name">{weatherData?.name}</p>
+              <p className="weather-type">{weatherData?.weather[0].main}</p>
             </div>
           </div>
           <Clock currentTime={currentTime} />
         </div>
       )}
 
-      {placeData && (
+      {weatherData && (
         <div className="weather-stats">
-          <StatItem label="Temperature" value={placeData?.main.temp} />
-          <StatItem label="Temperature Min" value={placeData?.main.temp_min} />
-          <StatItem label="Temperature Max" value={placeData?.main.temp_max} />
-          <StatItem label="Humidity" value={placeData?.main.humidity} />
-          <StatItem label="Visibility" value={placeData?.visibility} />
-          <StatItem label="Wind Speed" value={placeData?.wind.speed} />
+          <StatItem label="Temperature" value={weatherData?.main.temp} />
+          <StatItem
+            label="Temperature Min"
+            value={weatherData?.main.temp_min}
+          />
+          <StatItem
+            label="Temperature Max"
+            value={weatherData?.main.temp_max}
+          />
+          <StatItem label="Humidity" value={weatherData?.main.humidity} />
+          <StatItem label="Visibility" value={weatherData?.visibility} />
+          <StatItem label="Wind Speed" value={weatherData?.wind.speed} />
         </div>
       )}
     </div>
   );
-}
+};
+
+export default App;

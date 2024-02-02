@@ -1,4 +1,4 @@
-import React from "react";
+import "./style.css";
 
 const Clock: React.FC<{ currentTime: string }> = ({ currentTime }) => {
   return (

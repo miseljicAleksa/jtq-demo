@@ -1,0 +1,23 @@
+.stat-item {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
+.stat-item:first-child {
+  padding-left: 20px;
+}
+
+.stat-item:last-child {
+  padding-right: 20px;
+}
+
+.stat-label {
+  font-size: 15px;
+  color: white;
+}
+
+.stat-value {
+  font-size: 25px;
+  color: rgb(240, 255, 141);
+}
