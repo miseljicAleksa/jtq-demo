@@ -32,7 +32,7 @@ A simple React application to check the weather for a specific location.
 5. **OPTIONAL: Set up your API Key in the app:**
 
    - Go to 'config.ts' in the 'src' directory.
-   - Replace the placeholder for the API key with the one you obtained from OpenWeatherMap.
+   - Replace the value for the API key with the one you obtained from OpenWeatherMap.
 
 6. **Run the app:**
    `npm start`
